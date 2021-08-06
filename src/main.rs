@@ -1,9 +1,11 @@
-use std::{collections::HashMap, sync::mpsc};
+use std::sync::mpsc;
 const THRESHOLD: usize = 8;
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
-    let v = vec![1, 2, 3, 4, 5, 6];
-    let f = |x: i32| x * 2;
+    // let v = vec![1, 2, 3, 4, 5, 6];
+    let v = vec!["1", "22", "333", "4", "5", "6"];
+    // let f = |x: i32| x * 2;
+    let f = |x: &str| x.len();
     let r = split_work(v, f);
     for i in r {
         println!("{}", i)
