@@ -57,8 +57,7 @@ where
         }
         r
     } else {
-        let r = v.into_iter().map(|t| f(t)).collect();
-        r
+        v.into_iter().map(|t| f(t)).collect()
     }
 }
 
