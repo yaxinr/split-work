@@ -1,7 +1,8 @@
 use std::{collections::HashMap, sync::mpsc};
+const THRESHOLD: usize = 8;
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
-    let mut v = vec![1, 2, 3, 4, 5, 6];
+    let v = vec![1, 2, 3, 4, 5, 6];
     let f = |x: i32| x * 2;
     let r = split_work(v, f);
     for i in r {
@@ -23,35 +24,40 @@ where
     // let num_cpu = num_cpus::get();
     const NUM_CPU: usize = 4;
     let len = v.len();
-    let mut r: Vec<U> = vec![U::default(); len];
-    let (tx, rx) = mpsc::channel();
-    let chunk_size = if len > NUM_CPU { len / NUM_CPU } else { 1 };
-    let chunks = v.chunks(chunk_size);
-    for (i, chunk) in chunks.enumerate() {
-        let ch = chunk.to_vec();
-        let tx1 = tx.clone();
-        std::thread::spawn(move || {
-            for (j, item) in ch.clone().into_iter().enumerate() {
-                let u = f(item.into());
-                let r = FnResult {
-                    i: i * chunk_size + j,
-                    v: u,
-                };
-                tx1.send(r).unwrap();
-            }
-        });
-    }
+    if len > THRESHOLD {
+        let mut r: Vec<U> = vec![U::default(); len];
+        let (tx, rx) = mpsc::channel();
+        let chunk_size = if len > NUM_CPU { len / NUM_CPU } else { 1 };
+        let chunks = v.chunks(chunk_size);
+        for (i, chunk) in chunks.enumerate() {
+            let ch = chunk.to_vec();
+            let tx1 = tx.clone();
+            std::thread::spawn(move || {
+                for (j, item) in ch.clone().into_iter().enumerate() {
+                    let u = f(item.into());
+                    let r = FnResult {
+                        i: i * chunk_size + j,
+                        v: u,
+                    };
+                    tx1.send(r).unwrap();
+                }
+            });
+        }
 
-    let mut i = len;
-    loop {
-        let received = rx.recv().unwrap();
-        r[received.i] = received.v;
-        i -= 1;
-        if i == 0 {
-            break;
-        };
+        let mut i = len;
+        loop {
+            let received = rx.recv().unwrap();
+            r[received.i] = received.v;
+            i -= 1;
+            if i == 0 {
+                break;
+            };
+        }
+        r
+    } else {
+        let r = v.into_iter().map(|t| f(t.into())).collect();
+        r
     }
-    r
 }
 
 struct FnResult<T> {
