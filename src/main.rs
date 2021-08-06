@@ -14,7 +14,7 @@ fn main() {
 
 fn split_work<
     T: Copy + std::marker::Send + 'static,
-    U: std::marker::Send + 'static + Default + Clone,
+    U: Copy + std::marker::Send + 'static + Default,
     F,
 >(
     v: Vec<T>,
@@ -35,8 +35,8 @@ where
             let ch = chunk.to_vec();
             let tx1 = tx.clone();
             std::thread::spawn(move || {
-                for (j, item) in ch.clone().into_iter().enumerate() {
-                    let u = f(item.into());
+                for (j, t) in ch.into_iter().enumerate() {
+                    let u = f(t);
                     let r = FnResult {
                         i: i * chunk_size + j,
                         v: u,
@@ -57,7 +57,7 @@ where
         }
         r
     } else {
-        let r = v.into_iter().map(|t| f(t.into())).collect();
+        let r = v.into_iter().map(|t| f(t)).collect();
         r
     }
 }
