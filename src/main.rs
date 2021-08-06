@@ -27,7 +27,10 @@ where
     const NUM_CPU: usize = 4;
     let len = v.len();
     if len > THRESHOLD {
-        let mut r: Vec<U> = vec![U::default(); len];
+        let mut r: Vec<U> = Vec::with_capacity(len);
+        unsafe {
+            r.set_len(len);
+        }
         let (tx, rx) = mpsc::channel();
         let chunk_size = if len > NUM_CPU { len / NUM_CPU } else { 1 };
         let chunks = v.chunks(chunk_size);
