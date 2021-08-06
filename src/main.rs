@@ -1,10 +1,7 @@
-use std::sync::mpsc;
+use std::{collections::HashMap, sync::mpsc};
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
-    let mut v = Vec::new();
-    v.push(1);
-    v.push(2);
-    v.push(3);
+    let mut v = vec![1, 2, 3, 4, 5, 6];
     let f = |x: i32| x * 2;
     let r = split_work(v, f);
     for i in r {
@@ -12,37 +9,52 @@ fn main() {
     }
 }
 
-fn split_work<T: Copy + std::marker::Send + 'static, U: std::marker::Send + 'static, F>(
+fn split_work<
+    T: Copy + std::marker::Send + 'static,
+    U: std::marker::Send + 'static + Default + Clone,
+    F,
+>(
     v: Vec<T>,
     f: F,
 ) -> Vec<U>
 where
     F: Fn(T) -> U + Send + Copy + 'static + std::marker::Sync,
 {
-    let num_cpu = 2;
-    let mut r = Vec::new();
+    // let num_cpu = num_cpus::get();
+    const NUM_CPU: usize = 4;
+    let len = v.len();
+    let mut r: Vec<U> = vec![U::default(); len];
     let (tx, rx) = mpsc::channel();
-    let chunk_size = v.len() / num_cpu;
+    let chunk_size = if len > NUM_CPU { len / NUM_CPU } else { 1 };
     let chunks = v.chunks(chunk_size);
-    for chunk in chunks {
+    for (i, chunk) in chunks.enumerate() {
         let ch = chunk.to_vec();
         let tx1 = tx.clone();
         std::thread::spawn(move || {
-            for i in ch.clone().into_iter() {
-                let j = f(i.into());
-                tx1.send(j).unwrap();
+            for (j, item) in ch.clone().into_iter().enumerate() {
+                let u = f(item.into());
+                let r = FnResult {
+                    i: i * chunk_size + j,
+                    v: u,
+                };
+                tx1.send(r).unwrap();
             }
         });
     }
 
-    let mut i = v.len();
+    let mut i = len;
     loop {
         let received = rx.recv().unwrap();
-        r.push(received);
+        r[received.i] = received.v;
         i -= 1;
         if i == 0 {
             break;
         };
     }
     r
+}
+
+struct FnResult<T> {
+    i: usize,
+    v: T,
 }
