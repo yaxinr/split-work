@@ -12,9 +12,12 @@ fn main() {
     }
 }
 
-fn split_work<T: Copy + std::marker::Send + 'static, F>(v: Vec<T>, f: F) -> Vec<T>
+fn split_work<T: Copy + std::marker::Send + 'static, U: std::marker::Send + 'static, F>(
+    v: Vec<T>,
+    f: F,
+) -> Vec<U>
 where
-    F: Fn(T) -> T + Send + Copy + 'static + std::marker::Sync,
+    F: Fn(T) -> U + Send + Copy + 'static + std::marker::Sync,
 {
     let num_cpu = 2;
     let mut r = Vec::new();
@@ -26,7 +29,7 @@ where
         let tx1 = tx.clone();
         std::thread::spawn(move || {
             for i in ch.clone().into_iter() {
-                let j = f(i.clone());
+                let j = f(i.into());
                 tx1.send(j).unwrap();
             }
         });
