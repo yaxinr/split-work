@@ -12,11 +12,7 @@ fn main() {
     }
 }
 
-fn split_work<
-    T: Copy + std::marker::Send + 'static,
-    U: Copy + std::marker::Send + 'static + Default,
-    F,
->(
+fn split_work<T: Copy + std::marker::Send + 'static, U: Copy + std::marker::Send + 'static, F>(
     v: Vec<T>,
     f: F,
 ) -> Vec<U>
