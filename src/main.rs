@@ -23,10 +23,6 @@ where
     const NUM_CPU: usize = 4;
     let len = v.len();
     if len > THRESHOLD {
-        let mut r: Vec<U> = Vec::with_capacity(len);
-        unsafe {
-            r.set_len(len);
-        }
         let (tx, rx) = mpsc::channel();
         let chunk_size = if len > NUM_CPU { len / NUM_CPU } else { 1 };
         let chunks = v.chunks(chunk_size);
@@ -34,8 +30,8 @@ where
             let ch = chunk.to_vec();
             let tx1 = tx.clone();
             std::thread::spawn(move || {
-                for (j, t) in ch.into_iter().enumerate() {
-                    let u = f(t);
+                for (j, t) in ch.iter().enumerate() {
+                    let u = f(*t);
                     let r = FnResult {
                         i: i * chunk_size + j,
                         v: u,
@@ -45,6 +41,10 @@ where
             });
         }
 
+        let mut r: Vec<U> = Vec::with_capacity(len);
+        unsafe {
+            r.set_len(len);
+        }
         let mut i = len;
         loop {
             let received = rx.recv().unwrap();
