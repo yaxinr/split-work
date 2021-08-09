@@ -1,4 +1,7 @@
-use std::sync::mpsc;
+use std::{
+    marker::{Send, Sync},
+    sync::mpsc,
+};
 const THRESHOLD: usize = 8;
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
@@ -12,12 +15,11 @@ fn main() {
     }
 }
 
-fn split_work<T: Copy + std::marker::Send + 'static, U: Copy + std::marker::Send + 'static, F>(
-    v: Vec<T>,
-    f: F,
-) -> Vec<U>
+fn split_work<T, U, F>(v: Vec<T>, f: F) -> Vec<U>
 where
-    F: Fn(T) -> U + Send + Copy + 'static + std::marker::Sync,
+    F: Fn(T) -> U + Copy + Send + 'static + Sync,
+    T: Copy + Send + 'static,
+    U: Copy + Send + 'static,
 {
     // let num_cpu = num_cpus::get();
     const NUM_CPU: usize = 4;
