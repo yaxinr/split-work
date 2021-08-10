@@ -5,10 +5,14 @@ use std::{
 const THRESHOLD: usize = 2;
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
-    // let v = vec![1, 2, 3, 4, 5, 6];
     let v = vec!["1", "22", "333", "4", "5", "6", ""];
-    // let f = |x: i32| x * 2;
     let f = |x: &str| x.len();
+    let r = split_work(v, f);
+    for i in r {
+        println!("{}", i)
+    }
+    let v = vec![1, 2, 3, 4, 5, 6];
+    let f = |x: i32| x * 2;
     let r = split_work(v, f);
     for i in r {
         println!("{}", i)
@@ -22,12 +26,12 @@ where
     U: Copy + Send + 'static,
 {
     // let num_cpu = num_cpus::get();
-    const NUM_CPU: usize = 4;
+    const NUM_CPU: usize = 2;
     let len = v.len();
     println!("len={}", len);
     if len > THRESHOLD {
         let (tx, rx) = mpsc::channel();
-        let chunk_size = if len > NUM_CPU { len / NUM_CPU + 1 } else { 1 };
+        let chunk_size = (len + NUM_CPU - 1) / NUM_CPU;
         println!("chunk size={}", chunk_size);
         let chunks = v.chunks(chunk_size);
         let chunks_len = chunks.len();
@@ -35,22 +39,17 @@ where
         for (i, chunk) in chunks.enumerate() {
             let ch = chunk.to_vec();
             let tx1 = tx.clone();
-            std::thread::spawn(move || tx1.send((i, vec_f(ch, f))));
+            std::thread::spawn(move || tx1.send((i, vec_f(ch, f))).expect("send error"));
         }
+        drop(tx);
         let mut r: Vec<U> = Vec::with_capacity(len);
         unsafe {
             r.set_len(len);
         }
-        let mut i = chunks_len;
-        loop {
-            let received = rx.recv().expect("do not receive from threads");
-            for (j, result) in received.1.iter().enumerate() {
-                r[received.0 * chunk_size + j] = *result;
+        for received in rx.iter() {
+            for (j, u) in received.1.into_iter().enumerate() {
+                r[received.0 * chunk_size + j] = u;
             }
-            i -= 1;
-            if i == 0 {
-                break;
-            };
         }
         r
     } else {
