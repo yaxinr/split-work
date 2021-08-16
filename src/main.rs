@@ -1,7 +1,4 @@
-use std::{
-    marker::{Send, Sync},
-    sync::mpsc,
-};
+use std::marker::{Send, Sync};
 const THRESHOLD: usize = 2;
 fn main() {
     // println!("Number of logical cores is {}", num_cpus::get());
@@ -30,28 +27,21 @@ where
     let len = v.len();
     println!("len={}", len);
     if len > THRESHOLD {
-        let (tx, rx) = mpsc::channel();
         let chunk_size = (len + NUM_CPU - 1) / NUM_CPU;
         println!("chunk size={}", chunk_size);
         let chunks = v.chunks(chunk_size);
         let chunks_len = chunks.len();
         println!("chunks len={}", chunks_len);
-        for (i, chunk) in chunks.enumerate() {
-            let ch = chunk.to_vec();
-            let tx1 = tx.clone();
-            std::thread::spawn(move || tx1.send((i, vec_f(ch, f))).expect("send error"));
+        let mut threads = Vec::new();
+        for chunk in chunks {
+            let ch = chunk.to_owned();
+            threads.push(std::thread::spawn(move || vec_f(ch, f)));
         }
-        drop(tx);
-        let mut r: Vec<U> = Vec::with_capacity(len);
-        unsafe {
-            r.set_len(len);
-        }
-        for received in rx.iter() {
-            for (j, u) in received.1.into_iter().enumerate() {
-                r[received.0 * chunk_size + j] = u;
-            }
-        }
-        r
+        threads
+            .into_iter()
+            .map(|t| t.join().unwrap())
+            .collect::<Vec<Vec<U>>>()
+            .concat()
     } else {
         vec_f(v, f)
     }
